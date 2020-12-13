@@ -4,8 +4,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Properties;
 import java.lang.reflect.*;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 
 public class Injector {
@@ -27,22 +30,24 @@ public class Injector {
         if (object == null) {
             throw new NullPointerException("Object is null");
         }
-        inject_object(object);
+        Inject(object);
         return object;
     }
 
-    private <T> void inject_object(T object) {
+    private <T> void Inject(T object) {
         try {
             Class<?> clazz = object.getClass();
-            for (Field field: clazz.getDeclaredFields()) {
-                if (field.isAnnotationPresent(AutoInjectable.class)) {
-                    Object createdObject = produce(field.getType());
-                    if (createdObject != null) {
-                        field.setAccessible(true);
-                        field.set(object, createdObject);
-                    }
+            List<Field> classFields = Arrays.stream(clazz.getDeclaredFields())
+                    .filter(field -> field.isAnnotationPresent(AutoInjectable.class))
+                    .collect(Collectors.toList());
+            for (Field field : classFields) {
+                Object createdObject = produce(field.getType());
+                if (createdObject != null) {
+                    field.setAccessible(true);
+                    field.set(object, createdObject);
                 }
             }
+
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
@@ -55,21 +60,9 @@ public class Injector {
             Constructor constructor = creatingClass.getDeclaredConstructor();
             return constructor.newInstance();
         }
-        catch (ClassNotFoundException e) {
+        catch (ReflectiveOperationException e) {
             e.printStackTrace();
+            return null;
         }
-        catch (InstantiationException e) {
-            e.printStackTrace();
-        }
-        catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
-        catch(NoSuchMethodException e) {
-            e.printStackTrace();
-        }
-        catch (InvocationTargetException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 }
